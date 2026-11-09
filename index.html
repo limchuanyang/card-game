@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Table</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+:root {
+    --bg-a: #2a3350; --bg-b: #131827; --table: rgba(255,255,255,.05);
+    --ink: #eef1f8; --muted: rgba(238,241,248,.6); --line: rgba(255,255,255,.14); --panel: #1b2132; --glass: rgba(255,255,255,.07);
+    --accent: #8fb4ff; --gold: #8fb4ff;
+    --red: #e5484d; --blue: #3e7bfa; --green: #2fa66b; --yellow: #f2b705;
+    --card-width: 84px; --card-height: 122px;
+    --ui-font: 'DM Sans', 'Noto Sans SC', 'PingFang SC', 'Segoe UI', sans-serif;
+}
+body[data-theme="Dark Mode"] { --bg-a: #1c1c26; --bg-b: #0b0b10; --accent: #c4c8d8; --gold: #c4c8d8; }
+body[data-theme="Neon Theme"] { --bg-a: #4a3430; --bg-b: #1d1413; --accent: #ffb98a; --gold: #ffb98a; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+body, html { width: 100%; height: 100%; overflow: hidden; font-family: var(--ui-font); background: var(--bg-b); color: var(--ink); }
+button, input, select { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#game-container { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, var(--bg-a), var(--bg-b) 85%); }
+
+.top-left-hud { position: absolute; top: 14px; left: 16px; z-index: 20; }
+.timer-badge { background: var(--glass); border: 1px solid var(--line); padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.table-zone-top { display: flex; flex-direction: column; align-items: center; padding-top: 14px; gap: 8px; position: relative; z-index: 5; }
+.mobile-ai-seat { display: flex; align-items: center; gap: 10px; background: var(--glass); padding: 6px 14px 6px 6px; border-radius: 12px; border: 1px solid var(--line); position: relative; transition: border-color .2s, background .2s; }
+.mobile-ai-seat:has(.active-glow) { border-color: var(--accent); background: rgba(143,180,255,.14); }
+.avatar-box { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,.1); display: flex; justify-content: center; align-items: center; }
+.avatar-box.active-glow { background: var(--accent); }
+.avatar-mock-img { font-size: 16px; font-weight: 700; color: var(--ink); }
+.avatar-box.active-glow .avatar-mock-img { color: #131827; }
+.ai-name-tag { font-size: 14px; font-weight: 500; color: var(--ink); }
+
+.ai-cards-fan-top { display: flex; height: 44px; justify-content: center; padding-left: 14px; }
+.mini-card-back { width: 30px; height: 44px; border-radius: 6px; border: 1px solid rgba(255,255,255,.55); margin-left: -14px; font-size: 0; color: transparent; background: repeating-linear-gradient(45deg, #3b4766 0 4px, #2f3a56 4px 8px); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.mini-card-back.rot-1 { transform: rotate(-8deg); } .mini-card-back.rot-2 { transform: rotate(-3deg); } .mini-card-back.rot-3 { transform: rotate(5deg); }
+
+.table-zone-middle { flex: 1; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; position: relative; z-index: 5; min-height: 0; }
+.mobile-ai-seat.left, .mobile-ai-seat.right { flex-direction: column; padding: 12px; gap: 8px; }
+.ai-cards-fan-side { display: flex; flex-direction: column; align-items: center; height: 76px; padding-top: 26px; }
+.ai-cards-fan-side .mini-card-back { margin: -26px 0 0; }
+
+.planet-center-table { width: min(420px, 52vw); height: 240px; border-radius: 50% / 46%; background: var(--table); border: 1px solid var(--line); display: flex; justify-content: center; align-items: center; gap: 28px; position: relative; box-shadow: inset 0 0 60px rgba(0,0,0,.25); }
+.planet-3d-bg-text { position: absolute; font-size: 84px; font-weight: 700; color: rgba(255,255,255,.05); letter-spacing: 6px; pointer-events: none; z-index: 1; }
+#combo-popup-banner { position: absolute; top: -52px; left: 50%; transform: translateX(-50%) translateY(8px); opacity: 0; background: var(--ink); color: #131827; font-size: 14px; font-weight: 600; padding: 7px 16px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.4); z-index: 50; pointer-events: none; white-space: nowrap; transition: transform .25s ease-out, opacity .25s; }
+#combo-popup-banner.show { transform: translateX(-50%); opacity: 1; }
+
+.mobile-pile { width: var(--card-width); height: var(--card-height); border-radius: 10px; border: 1.5px dashed rgba(255,255,255,.3); display: flex; justify-content: center; align-items: center; position: relative; z-index: 5; cursor: pointer; transition: transform .15s; }
+#draw-pile { border: none; }
+#draw-pile:hover { transform: translateY(-3px); }
+.mobile-pile > div[style] { font-size: 12px !important; font-weight: 500 !important; color: var(--muted) !important; letter-spacing: .06em; }
+.pile-gem-indicator { display: none; }
+#draw-pile .card-back-stack { width: 100%; height: 100%; border-radius: 10px; border: 1px solid rgba(255,255,255,.6); display: flex; justify-content: center; align-items: center; background: repeating-linear-gradient(45deg, #3b4766 0 6px, #2f3a56 6px 12px); color: rgba(255,255,255,.85); font-weight: 700; font-size: 18px; letter-spacing: 2px; box-shadow: 3px 3px 0 -1px #2a3350, 6px 6px 0 -2px #1f2740, 0 10px 20px rgba(0,0,0,.45); }
+
+.table-zone-bottom { display: flex; flex-direction: column; align-items: center; padding-bottom: 16px; position: relative; z-index: 10; }
+.player-hud-left { position: absolute; left: 16px; bottom: 18px; display: flex; align-items: center; gap: 10px; background: var(--glass); padding: 6px 14px 6px 6px; border-radius: 12px; border: 1px solid var(--line); }
+.player-hud-left:has(.active-glow) { border-color: var(--accent); }
+.gear-settings-btn { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,.08); border: 1px solid var(--line); color: var(--ink); font-size: 17px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: background .2s; }
+.gear-settings-btn:hover { background: rgba(255,255,255,.18); }
+.card-fan.mobile-fan { display: flex; justify-content: center; align-items: flex-end; height: 190px; width: 100%; max-width: 980px; padding: 0 0 8px; position: relative; overflow: visible; }
+
+.card { width: var(--card-width); height: var(--card-height); background: #fff; border-radius: 10px; border: 3px solid #fff; position: absolute; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; padding: 4px 6px; box-shadow: 0 6px 16px rgba(0,0,0,.45); transform-origin: 50% 160%; transform: translateX(var(--tx, 0px)) translateY(var(--ty, 0px)) rotate(var(--rot, 0deg)); transition: transform .18s ease-out, box-shadow .18s; }
+#player-hand-container .card:hover { transform: translateX(var(--tx, 0px)) translateY(calc(var(--ty, 0px) - 12px)) rotate(var(--rot, 0deg)); }
+#player-hand-container .card.selected { transform: translateX(var(--tx, 0px)) translateY(-34px) rotate(0deg) scale(1.05); z-index: 100 !important; box-shadow: 0 0 0 3px var(--accent), 0 16px 28px rgba(0,0,0,.55); }
+.card.RED { background: var(--red); color: #fff; } .card.BLUE { background: var(--blue); color: #fff; }
+.card.GREEN { background: var(--green); color: #fff; } .card.YELLOW { background: var(--yellow); color: #2a2100; }
+.card.WILD { background: conic-gradient(var(--red) 0 25%, var(--blue) 0 50%, var(--green) 0 75%, var(--yellow) 0); color: #fff; }
+.card-top-left, .card-bottom-right { font-weight: 700; font-size: 19px; line-height: 1; }
+.card-bottom-right { align-self: flex-end; transform: rotate(180deg); }
+.card-center-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-12deg); width: 56px; height: 42px; background: #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: 700; }
+.card.RED .card-center-badge { color: var(--red); } .card.BLUE .card-center-badge { color: var(--blue); }
+.card.GREEN .card-center-badge { color: var(--green); } .card.YELLOW .card-center-badge { color: #9a6f00; }
+.card.WILD .card-center-badge { background: #131827; color: #fff; }
+
+.player-actions-mobile { display: flex; gap: 10px; margin-top: 6px; }
+.mobile-action-btn { padding: 10px 24px; font-size: 14px; font-weight: 600; border-radius: 10px; cursor: pointer; background: var(--glass); color: var(--ink); border: 1px solid var(--line); transition: background .15s, transform .1s; }
+.mobile-action-btn:hover { background: rgba(255,255,255,.16); }
+.mobile-action-btn:active { transform: translateY(1px); }
+.mobile-action-btn:disabled { opacity: .35; cursor: not-allowed; }
+.mobile-action-btn.play { background: var(--accent); color: #131827; border-color: var(--accent); padding: 10px 40px; }
+.mobile-action-btn.play:hover { filter: brightness(1.08); background: var(--accent); }
+
+.pass-indicator-badge { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #131827; font-weight: 600; font-size: 12px; padding: 3px 10px; border-radius: 6px; z-index: 50; animation: popPass 1s ease-in-out forwards; white-space: nowrap; }
+@keyframes popPass { 0% { transform: translateX(-50%) translateY(6px); opacity: 0; } 25%, 80% { transform: translateX(-50%); opacity: 1; } 100% { transform: translateX(-50%) translateY(-4px); opacity: 0; } }
+@keyframes slideInRight { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+.hidden { display: none !important; }
+
+.modal { position: fixed; inset: 0; background: rgba(8,10,18,.7); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.modal-content { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; padding: 26px; width: 90%; max-width: 480px; box-shadow: 0 30px 70px rgba(0,0,0,.6); position: relative; display: flex; flex-direction: column; align-items: center; }
+.close-x { position: absolute; top: 10px; right: 14px; background: none; border: none; color: var(--muted); font-size: 26px; cursor: pointer; }
+.close-x:hover { color: var(--ink); }
+.menu-tabs { display: flex; gap: 4px; margin-bottom: 18px; width: 100%; padding-right: 26px; border-bottom: 1px solid var(--line); }
+.tab-btn { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); padding: 9px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: -1px; }
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { display: none; width: 100%; flex-direction: column; gap: 6px; }
+.tab-content.active { display: flex; }
+.setting-row, .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 4px; font-size: 14px; border-bottom: 1px solid var(--line); }
+.setting-row select, .setting-row input[type="text"] { background: #10141f; color: var(--ink); border: 1px solid var(--line); padding: 6px 10px; border-radius: 8px; }
+.setting-row input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; }
+.stat-row strong { font-size: 20px; color: var(--accent); }
+#rules-tab p { font-size: 13px; line-height: 1.8; color: var(--muted); }
+.color-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 8px; width: 100%; }
+.color-choice { height: 64px; border-radius: 12px; border: 2px solid rgba(255,255,255,.8); cursor: pointer; transition: transform .15s; }
+.color-choice:hover { transform: translateY(-3px); }
+.color-choice.red { background: var(--red); } .color-choice.blue { background: var(--blue); } .color-choice.green { background: var(--green); } .color-choice.yellow { background: var(--yellow); }
+
+@media (max-width: 760px), (max-height: 560px) {
+    :root { --card-width: 60px; --card-height: 88px; }
+    .card-top-left, .card-bottom-right { font-size: 14px; }
+    .card-center-badge { width: 40px; height: 30px; font-size: 17px; }
+    .table-zone-middle { padding: 0 8px; }
+    .planet-center-table { height: 170px; gap: 14px; width: 50vw; }
+    .planet-3d-bg-text { font-size: 56px; }
+    .ai-name-tag { font-size: 12px; } .avatar-box { width: 32px; height: 32px; }
+    .card-fan.mobile-fan { height: 140px; }
+    .player-hud-left { position: static; margin-bottom: 4px; }
+    .mobile-action-btn { padding: 8px 16px; } .mobile-action-btn.play { padding: 8px 26px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+a.mobile-action-btn{display:block;text-align:center;text-decoration:none}
+.card.dim{filter:brightness(.6) saturate(.7)}
+:root{--muted:rgba(238,241,248,.6)}
+#board{width:min(760px,72vw);height:250px;border-radius:24px;justify-content:flex-start;align-items:flex-start;flex-wrap:wrap;align-content:flex-start;gap:10px;padding:36px 16px 12px;overflow:auto}
+#board .pool{position:absolute;top:10px;left:18px;font-size:12px;color:var(--muted)}
+.set{display:flex;gap:2px;padding:4px;background:rgba(255,255,255,.08);border-radius:8px}
+.t,.rt{background:#f4efe3;display:flex;flex-direction:column;justify-content:center;align-items:center;font-weight:700;line-height:1}
+.t{width:30px;height:42px;border-radius:6px;font-size:17px;gap:2px;box-shadow:0 2px 0 #b9ae93,0 3px 6px rgba(0,0,0,.4)}
+.t::after{content:'';width:6px;height:6px;border-radius:50%;border:2px solid currentColor}
+.t.RED,.rt.RED,.t.WILD,.rt.WILD{color:#d93a3a}.t.BLUE,.rt.BLUE{color:#2f6fe0}.t.GREEN,.rt.GREEN{color:#1c1c22}.t.YELLOW,.rt.YELLOW{color:#e8860c}
+.rt{width:46px;height:62px;border-radius:8px;gap:3px;font-size:28px;cursor:pointer;box-shadow:0 4px 0 #b9ae93,0 6px 10px rgba(0,0,0,.4);transition:transform .12s,box-shadow .12s}
+.rt i{width:9px;height:9px;border-radius:50%;border:2.5px solid currentColor}
+.rt:hover{transform:translateY(-3px)}.rt.selected{transform:translateY(-10px);box-shadow:0 0 0 3px var(--accent),0 4px 0 3px #b9ae93}
+#screen-rummikub #player-hand-container{height:auto;max-width:780px;flex-wrap:wrap;gap:8px 6px;align-items:flex-start;padding:18px 14px 12px;margin-bottom:6px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:14px}
+@media (max-width:760px){.rt{width:36px;height:50px;font-size:22px}}
+.lobby{position:fixed;inset:0;overflow:auto;background:radial-gradient(ellipse at 50% 30%,var(--bg-a),var(--bg-b) 85%);padding:56px 24px;display:flex;flex-direction:column;align-items:center;gap:36px}
+.lobby h1{font-size:36px;font-weight:700;text-align:center}.lobby .sub{color:var(--muted);text-align:center;margin-top:6px}
+.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;width:min(1000px,100%)}
+.gcard{display:flex;flex-direction:column;gap:12px;padding:22px;background:var(--glass);border:1px solid var(--line);border-radius:16px;color:inherit;text-decoration:none;transition:border-color .2s,transform .2s}
+.gcard:hover{border-color:var(--accent);transform:translateY(-4px)}
+.gcard h2{font-size:22px}.gcard p{color:var(--muted);font-size:14px;line-height:1.6;flex:1}
+.pv{height:120px;display:flex;align-items:center;justify-content:center}
+.pv .card{position:relative;margin-left:-22px;--card-width:62px;--card-height:90px;transform:rotate(var(--rot,0deg));cursor:inherit}
+.pv .card:first-child{margin-left:0}.pv .t{margin:0 2px;width:40px;height:56px;font-size:22px}
+[hidden]{display:none!important}
+#stage iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#131827}
+.prefs{width:min(420px,100%)}
+.gcard .mobile-action-btn{pointer-events:none;text-align:center}
+.screen{position:fixed;inset:0}#screen-rummikub #pass-btn{display:none}</style>
+</head>
+<body>
+<main class="lobby" id="lobby"><div><h1>Card Table</h1><p class="sub">Pick a game. You play against three computer opponents.</p></div><div class="games"><a class="gcard" href="#" data-go="big2" data-g="big2"><div class="pv"><div class="card RED" style="--rot:-12deg"><div class="card-top-left">A</div><div class="card-center-badge">A</div><div class="card-bottom-right">A</div></div><div class="card BLUE" style="--rot:-4deg"><div class="card-top-left">K</div><div class="card-center-badge">K</div><div class="card-bottom-right">K</div></div><div class="card GREEN" style="--rot:4deg"><div class="card-top-left">2</div><div class="card-center-badge">2</div><div class="card-bottom-right">2</div></div><div class="card YELLOW" style="--rot:12deg"><div class="card-top-left">Q</div><div class="card-center-badge">Q</div><div class="card-bottom-right">Q</div></div></div><h2>Big 2 · 大老二</h2><p>Shed your 13 cards with singles, pairs, triples, straights and bombs. Beat what is on the table or pass.</p><span style="font-size:13px;color:var(--muted)">4 players · about 10 min</span><span class="mobile-action-btn play">Play</span></a><a class="gcard" href="#" data-go="uno" data-g="uno"><div class="pv"><div class="card RED" style="--rot:-12deg"><div class="card-top-left">7</div><div class="card-center-badge">7</div><div class="card-bottom-right">7</div></div><div class="card BLUE" style="--rot:-4deg"><div class="card-top-left">⇄</div><div class="card-center-badge">⇄</div><div class="card-bottom-right">⇄</div></div><div class="card GREEN" style="--rot:4deg"><div class="card-top-left">+2</div><div class="card-center-badge">+2</div><div class="card-bottom-right">+2</div></div><div class="card WILD" style="--rot:12deg"><div class="card-top-left">★</div><div class="card-center-badge">★</div><div class="card-bottom-right">★</div></div></div><h2>UNO</h2><p>Match colour or symbol, skip and reverse your rivals, and be first to play your last card.</p><span style="font-size:13px;color:var(--muted)">4 players · about 8 min</span><span class="mobile-action-btn play">Play</span></a><a class="gcard" href="#" data-go="rummikub" data-g="rummikub"><div class="pv"><div style="display:flex;align-items:center"><div class="t RED">7</div><div class="t RED">8</div><div class="t RED">9</div><div class="t BLUE">4</div><div class="t GREEN">4</div><div class="t YELLOW">4</div></div></div><h2>Rummikub · 拉密</h2><p>Build groups and runs from numbered tiles, add to sets on the table, and empty your rack first.</p><span style="font-size:13px;color:var(--muted)">4 players · about 15 min</span><span class="mobile-action-btn play">Play</span></a></div><div class="prefs"><div class="setting-row"><span>Player name</span><input type="text" id="pn" style="width:140px"></div><div class="setting-row"><span>Theme</span><select id="pt"><option value="Classic Green">Slate</option><option value="Dark Mode">Midnight</option><option value="Neon Theme">Warm</option></select></div></div></main>
+<section class="screen" id="screen-big2" hidden>
+    <div id="game-container">
+        
+        <!-- 顶部左侧计时器 -->
+        <div class="top-left-hud">
+            <div class="timer-badge">
+                <span>⏱</span>
+                <span id="game-timer">00:00</span>
+            </div>
+        </div>
+
+        <!-- 顶部 AI 2 (Ezra) -->
+        <div class="table-zone-top">
+            <div id="ai2-area" class="mobile-ai-seat top">
+                <div id="ai2-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai2-avatar">
+                    <div class="avatar-mock-img">E</div>
+                </div>
+                <span class="ai-name-tag">Ezra (<span id="ai2-count">13</span>)</span>
+            </div>
+            <div class="ai-cards-fan-top" id="ai2-fan">
+                <div class="mini-card-back rot-1">UNO</div>
+                <div class="mini-card-back rot-2">UNO</div>
+                <div class="mini-card-back rot-3">UNO</div>
+            </div>
+        </div>
+
+        <!-- 中间对战区 -->
+        <div class="table-zone-middle">
+            <!-- 左侧 AI 1 (Elliana) -->
+            <div id="ai1-area" class="mobile-ai-seat left">
+                <div id="ai1-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai1-avatar">
+                    <div class="avatar-mock-img">E</div>
+                </div>
+                <span class="ai-name-tag">Elliana (<span id="ai1-count">13</span>)</span>
+                <div class="ai-cards-fan-side" id="ai1-fan">
+                    <div class="mini-card-back rot-1">UNO</div>
+                    <div class="mini-card-back rot-2">UNO</div>
+                    <div class="mini-card-back rot-3">UNO</div>
+                </div>
+            </div>
+
+            <!-- 中央 3D 岛屿/牌桌 -->
+            <div class="planet-center-table">
+                <div id="combo-popup-banner">顺子 STRAIGHT!</div>
+                <div class="planet-3d-bg-text">UNO</div>
+                
+                <!-- 摸牌堆 -->
+                <div id="draw-pile" class="mobile-pile" title="Click to Draw">
+                    <div class="pile-gem-indicator"></div>
+                    <div class="card-back-stack">UNO</div>
+                </div>
+
+                <!-- 出牌堆 -->
+                <div id="discard-pile" class="mobile-pile" title="Current Table Discard">
+                    <div style="font-size:12px; font-weight:900; color:rgba(255,255,255,0.6);">TABLE</div>
+                </div>
+            </div>
+
+            <!-- 右侧 AI 3 (Garrett) -->
+            <div id="ai3-area" class="mobile-ai-seat right">
+                <div id="ai3-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai3-avatar">
+                    <div class="avatar-mock-img">G</div>
+                </div>
+                <span class="ai-name-tag">Garrett (<span id="ai3-count">13</span>)</span>
+                <div class="ai-cards-fan-side right" id="ai3-fan">
+                    <div class="mini-card-back rot-1">UNO</div>
+                    <div class="mini-card-back rot-2">UNO</div>
+                    <div class="mini-card-back rot-3">UNO</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部区域 (玩家手牌与操作) -->
+        <div class="table-zone-bottom">
+            <div class="player-hud-left">
+                <button class="gear-settings-btn" id="open-settings-btn" title="Settings & Menu">⚙️</button>
+                <div class="avatar-box active-glow" id="player-avatar">
+                    <div class="avatar-mock-img">L</div>
+                </div>
+                <span class="ai-name-tag" id="player-name-display" style="cursor: pointer;" title="Click to change name">Lu Die (<span id="player-count">13</span>)</span>
+            </div>
+
+            <!-- 玩家手牌扇形排列容器 -->
+            <div id="player-hand-container" class="card-fan mobile-fan">
+                <!-- 动态生成玩家手牌 -->
+            </div>
+
+            <div class="player-actions-mobile">
+                <button id="play-btn" class="mobile-action-btn play">Play</button>
+                <button id="draw-btn" class="mobile-action-btn draw">Draw</button>
+                <button id="pass-btn" class="mobile-action-btn pass">Pass</button>
+                <button id="sort-btn" class="mobile-action-btn sort">Sort</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：设置 / 规则 / 统计 -->
+    <div id="menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="close-x" id="close-modal-btn">&times;</button>
+            <div class="menu-tabs">
+                <button class="tab-btn active" data-tab="settings-tab">Settings</button>
+                <button class="tab-btn" data-tab="rules-tab">Rules</button>
+                <button class="tab-btn" data-tab="stats-tab">Stats</button>
+            </div>
+
+            <div id="settings-tab" class="tab-content active">
+                <div class="setting-row">
+                    <span>Player Name</span>
+                    <input type="text" id="setting-username" value="Lu Die" style="width:130px;">
+                </div>
+                <div class="setting-row">
+                    <span>AI Difficulty</span>
+                    <select id="setting-difficulty">
+                        <option value="Easy">Easy (Casual)</option>
+                        <option value="Normal" selected>Normal (Standard)</option>
+                        <option value="Hard">Hard (Strategic)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span>Sound Effects</span>
+                    <input type="checkbox" id="setting-sound" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Animations</span>
+                    <input type="checkbox" id="setting-anim" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Visual Theme</span>
+                    <select id="setting-theme">
+                        <option value="Classic Green">Slate</option>
+                        <option value="Dark Mode">Midnight</option>
+                        <option value="Neon Theme">Warm</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:10px"><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="home">Home</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="big2">Big 2</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="uno">UNO</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="rummikub">Rummikub</button></div>
+                <button class="mobile-action-btn play" id="restart-game-btn" style="width:100%; margin-top:10px;">New Game</button>
+            </div>
+
+            <div id="rules-tab" class="tab-content">
+                <h3 style="color:var(--gold); font-weight:700; margin-bottom:6px;">How to Play</h3>
+                <p>
+                    1. Each player is dealt 13 cards.<br>
+                    2. Valid combinations include: Single, Pair, Triple, Straight, Flush, Full House, and Bomb (Four of a Kind).<br>
+                    3. Click card to select, click Play to submit. If your selection doesn't match table combo, a warning popup explains why.<br>
+                    4. Clear all cards to win!
+                </p>
+            </div>
+
+            <div id="stats-tab" class="tab-content">
+                <div class="stat-row"><span>Matches Played</span><strong id="stat-played">0</strong></div>
+                <div class="stat-row"><span>Matches Won</span><strong id="stat-won">0</strong></div>
+                <div class="stat-row"><span>Win Rate</span><strong id="stat-rate">0%</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 万能牌颜色选择弹窗 -->
+    <div id="color-picker-modal" class="modal hidden">
+        <div class="modal-content" style="max-width:320px; text-align:center; align-items:stretch;">
+            <h3 style="color:var(--gold); font-weight:700; margin-bottom:15px;">Choose Wild Color</h3>
+            <div class="color-options">
+                <div class="color-choice red" data-color="RED"></div>
+                <div class="color-choice blue" data-color="BLUE"></div>
+                <div class="color-choice green" data-color="GREEN"></div>
+                <div class="color-choice yellow" data-color="YELLOW"></div>
+            </div>
+        </div>
+    </div>
+
+    </section>
+<section class="screen" id="screen-uno" hidden>
+    <div id="game-container">
+        
+        <!-- 顶部左侧计时器 -->
+        <div class="top-left-hud">
+            <div class="timer-badge">
+                <span>⏱</span>
+                <span id="game-timer">00:00</span>
+            </div>
+        </div>
+
+        <!-- 顶部 AI 2 (Ezra) -->
+        <div class="table-zone-top">
+            <div id="ai2-area" class="mobile-ai-seat top">
+                <div id="ai2-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai2-avatar">
+                    <div class="avatar-mock-img">E</div>
+                </div>
+                <span class="ai-name-tag">Ezra (<span id="ai2-count">13</span>)</span>
+            </div>
+            <div class="ai-cards-fan-top" id="ai2-fan">
+                <div class="mini-card-back rot-1">UNO</div>
+                <div class="mini-card-back rot-2">UNO</div>
+                <div class="mini-card-back rot-3">UNO</div>
+            </div>
+        </div>
+
+        <!-- 中间对战区 -->
+        <div class="table-zone-middle">
+            <!-- 左侧 AI 1 (Elliana) -->
+            <div id="ai1-area" class="mobile-ai-seat left">
+                <div id="ai1-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai1-avatar">
+                    <div class="avatar-mock-img">E</div>
+                </div>
+                <span class="ai-name-tag">Elliana (<span id="ai1-count">13</span>)</span>
+                <div class="ai-cards-fan-side" id="ai1-fan">
+                    <div class="mini-card-back rot-1">UNO</div>
+                    <div class="mini-card-back rot-2">UNO</div>
+                    <div class="mini-card-back rot-3">UNO</div>
+                </div>
+            </div>
+
+            <!-- 中央 3D 岛屿/牌桌 -->
+            <div class="planet-center-table">
+                <div id="combo-popup-banner">顺子 STRAIGHT!</div>
+                <div class="planet-3d-bg-text">UNO</div>
+                
+                <!-- 摸牌堆 -->
+                <div id="draw-pile" class="mobile-pile" title="Click to Draw">
+                    <div class="pile-gem-indicator"></div>
+                    <div class="card-back-stack">UNO</div>
+                </div>
+
+                <!-- 出牌堆 -->
+                <div id="discard-pile" class="mobile-pile" title="Current Table Discard">
+                    <div style="font-size:12px; font-weight:900; color:rgba(255,255,255,0.6);">TABLE</div>
+                </div>
+            </div>
+
+            <!-- 右侧 AI 3 (Garrett) -->
+            <div id="ai3-area" class="mobile-ai-seat right">
+                <div id="ai3-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai3-avatar">
+                    <div class="avatar-mock-img">G</div>
+                </div>
+                <span class="ai-name-tag">Garrett (<span id="ai3-count">13</span>)</span>
+                <div class="ai-cards-fan-side right" id="ai3-fan">
+                    <div class="mini-card-back rot-1">UNO</div>
+                    <div class="mini-card-back rot-2">UNO</div>
+                    <div class="mini-card-back rot-3">UNO</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部区域 (玩家手牌与操作) -->
+        <div class="table-zone-bottom">
+            <div class="player-hud-left">
+                <button class="gear-settings-btn" id="open-settings-btn" title="Settings & Menu">⚙️</button>
+                <div class="avatar-box active-glow" id="player-avatar">
+                    <div class="avatar-mock-img">L</div>
+                </div>
+                <span class="ai-name-tag" id="player-name-display" style="cursor: pointer;" title="Click to change name">Lu Die (<span id="player-count">13</span>)</span>
+            </div>
+
+            <!-- 玩家手牌扇形排列容器 -->
+            <div id="player-hand-container" class="card-fan mobile-fan">
+                <!-- 动态生成玩家手牌 -->
+            </div>
+
+            <div class="player-actions-mobile">
+                <button id="play-btn" class="mobile-action-btn play">Play</button>
+                <button id="draw-btn" class="mobile-action-btn draw">Draw</button>
+                <button id="pass-btn" class="mobile-action-btn pass">Pass</button>
+                <button id="sort-btn" class="mobile-action-btn sort">Sort</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：设置 / 规则 / 统计 -->
+    <div id="menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="close-x" id="close-modal-btn">&times;</button>
+            <div class="menu-tabs">
+                <button class="tab-btn active" data-tab="settings-tab">Settings</button>
+                <button class="tab-btn" data-tab="rules-tab">Rules</button>
+                <button class="tab-btn" data-tab="stats-tab">Stats</button>
+            </div>
+
+            <div id="settings-tab" class="tab-content active">
+                <div class="setting-row">
+                    <span>Player Name</span>
+                    <input type="text" id="setting-username" value="Lu Die" style="width:130px;">
+                </div>
+                <div class="setting-row">
+                    <span>AI Difficulty</span>
+                    <select id="setting-difficulty">
+                        <option value="Easy">Easy (Casual)</option>
+                        <option value="Normal" selected>Normal (Standard)</option>
+                        <option value="Hard">Hard (Strategic)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span>Sound Effects</span>
+                    <input type="checkbox" id="setting-sound" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Animations</span>
+                    <input type="checkbox" id="setting-anim" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Visual Theme</span>
+                    <select id="setting-theme">
+                        <option value="Classic Green">Slate</option>
+                        <option value="Dark Mode">Midnight</option>
+                        <option value="Neon Theme">Warm</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:10px"><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="home">Home</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="big2">Big 2</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="uno">UNO</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="rummikub">Rummikub</button></div>
+                <button class="mobile-action-btn play" id="restart-game-btn" style="width:100%; margin-top:10px;">New Game</button>
+            </div>
+
+            <div id="rules-tab" class="tab-content"><h3 style="margin-bottom:6px;color:var(--gold)">How to play UNO</h3><p>Each player starts with 7 cards. Play a card that matches the colour or symbol of the top card. ⊘ skips the next player, ⇄ reverses direction, +2 makes the next player draw two. ★ and +4 are wild: pick a colour (+4 also makes the next player draw four). Click a card once to select it and again to play it. No playable card? Draw; pass if you still cannot play. First to empty their hand wins.</p>
+            </div>
+
+            <div id="stats-tab" class="tab-content">
+                <div class="stat-row"><span>Matches Played</span><strong id="stat-played">0</strong></div>
+                <div class="stat-row"><span>Matches Won</span><strong id="stat-won">0</strong></div>
+                <div class="stat-row"><span>Win Rate</span><strong id="stat-rate">0%</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 万能牌颜色选择弹窗 -->
+    <div id="color-picker-modal" class="modal hidden">
+        <div class="modal-content" style="max-width:320px; text-align:center; align-items:stretch;">
+            <h3 style="color:var(--gold); font-weight:700; margin-bottom:15px;">Choose Wild Color</h3>
+            <div class="color-options">
+                <div class="color-choice red" data-color="RED"></div>
+                <div class="color-choice blue" data-color="BLUE"></div>
+                <div class="color-choice green" data-color="GREEN"></div>
+                <div class="color-choice yellow" data-color="YELLOW"></div>
+            </div>
+        </div>
+    </div>
+
+    </section>
+<section class="screen" id="screen-rummikub" hidden>
+    <div id="game-container">
+        
+        <!-- 顶部左侧计时器 -->
+        <div class="top-left-hud">
+            <div class="timer-badge">
+                <span>⏱</span>
+                <span id="game-timer">00:00</span>
+            </div>
+        </div>
+
+        <!-- 顶部 AI 2 (Ezra) -->
+        <div class="table-zone-top">
+            <div id="ai2-area" class="mobile-ai-seat top">
+                <div id="ai2-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai2-avatar">
+                    <div class="avatar-mock-img">E</div>
+                </div>
+                <span class="ai-name-tag">Ezra (<span id="ai2-count">13</span>)</span>
+            </div>
+            <div class="ai-cards-fan-top" id="ai2-fan">
+                <div class="mini-card-back rot-1">UNO</div>
+                <div class="mini-card-back rot-2">UNO</div>
+                <div class="mini-card-back rot-3">UNO</div>
+            </div>
+        </div>
+
+        <!-- 中间对战区 -->
+        <div class="table-zone-middle">
+            <!-- 左侧 AI 1 (Elliana) -->
+            <div id="ai1-area" class="mobile-ai-seat left">
+                <div id="ai1-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai1-avatar">
+                    <div class="avatar-mock-img">E</div>
+                </div>
+                <span class="ai-name-tag">Elliana (<span id="ai1-count">13</span>)</span>
+                <div class="ai-cards-fan-side" id="ai1-fan">
+                    <div class="mini-card-back rot-1">UNO</div>
+                    <div class="mini-card-back rot-2">UNO</div>
+                    <div class="mini-card-back rot-3">UNO</div>
+                </div>
+            </div>
+
+            <div style="position:relative"><div id="combo-popup-banner"></div><div class="planet-center-table" id="board"></div></div>
+
+            <!-- 右侧 AI 3 (Garrett) -->
+            <div id="ai3-area" class="mobile-ai-seat right">
+                <div id="ai3-pass-badge" class="pass-indicator-badge hidden">PASS</div>
+                <div class="avatar-box" id="ai3-avatar">
+                    <div class="avatar-mock-img">G</div>
+                </div>
+                <span class="ai-name-tag">Garrett (<span id="ai3-count">13</span>)</span>
+                <div class="ai-cards-fan-side right" id="ai3-fan">
+                    <div class="mini-card-back rot-1">UNO</div>
+                    <div class="mini-card-back rot-2">UNO</div>
+                    <div class="mini-card-back rot-3">UNO</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部区域 (玩家手牌与操作) -->
+        <div class="table-zone-bottom">
+            <div class="player-hud-left">
+                <button class="gear-settings-btn" id="open-settings-btn" title="Settings & Menu">⚙️</button>
+                <div class="avatar-box active-glow" id="player-avatar">
+                    <div class="avatar-mock-img">L</div>
+                </div>
+                <span class="ai-name-tag" id="player-name-display" style="cursor: pointer;" title="Click to change name">Lu Die (<span id="player-count">13</span>)</span>
+            </div>
+
+            <!-- 玩家手牌扇形排列容器 -->
+            <div id="player-hand-container" class="card-fan mobile-fan">
+                <!-- 动态生成玩家手牌 -->
+            </div>
+
+            <div class="player-actions-mobile">
+                <button id="play-btn" class="mobile-action-btn play">Lay down</button>
+                <button id="draw-btn" class="mobile-action-btn draw">Draw</button>
+                <button id="pass-btn" class="mobile-action-btn pass">Pass</button>
+                <button id="sort-btn" class="mobile-action-btn sort">Sort</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：设置 / 规则 / 统计 -->
+    <div id="menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="close-x" id="close-modal-btn">&times;</button>
+            <div class="menu-tabs">
+                <button class="tab-btn active" data-tab="settings-tab">Settings</button>
+                <button class="tab-btn" data-tab="rules-tab">Rules</button>
+                <button class="tab-btn" data-tab="stats-tab">Stats</button>
+            </div>
+
+            <div id="settings-tab" class="tab-content active">
+                <div class="setting-row">
+                    <span>Player Name</span>
+                    <input type="text" id="setting-username" value="Lu Die" style="width:130px;">
+                </div>
+                <div class="setting-row">
+                    <span>AI Difficulty</span>
+                    <select id="setting-difficulty">
+                        <option value="Easy">Easy (Casual)</option>
+                        <option value="Normal" selected>Normal (Standard)</option>
+                        <option value="Hard">Hard (Strategic)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span>Sound Effects</span>
+                    <input type="checkbox" id="setting-sound" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Animations</span>
+                    <input type="checkbox" id="setting-anim" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Visual Theme</span>
+                    <select id="setting-theme">
+                        <option value="Classic Green">Slate</option>
+                        <option value="Dark Mode">Midnight</option>
+                        <option value="Neon Theme">Warm</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:10px"><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="home">Home</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="big2">Big 2</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="uno">UNO</button><button class="mobile-action-btn" style="flex:1;padding:8px 4px;font-size:13px" data-go="rummikub">Rummikub</button></div>
+                <button class="mobile-action-btn play" id="restart-game-btn" style="width:100%; margin-top:10px;">New Game</button>
+            </div>
+
+            <div id="rules-tab" class="tab-content"><h3 style="margin-bottom:6px;color:var(--gold)">How to play Rummikub</h3><p>Each player starts with 14 tiles. Lay down sets: a group (3–4 tiles of the same number in different colours) or a run (3+ consecutive numbers in one colour). ☺ is a joker. Your first set must total 30+ points. After that you can lay more sets or add selected tiles to a set on the table. Cannot play? Draw a tile. First to empty their rack wins. This version does not allow rearranging sets already on the table.</p>
+            </div>
+
+            <div id="stats-tab" class="tab-content">
+                <div class="stat-row"><span>Matches Played</span><strong id="stat-played">0</strong></div>
+                <div class="stat-row"><span>Matches Won</span><strong id="stat-won">0</strong></div>
+                <div class="stat-row"><span>Win Rate</span><strong id="stat-rate">0%</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 万能牌颜色选择弹窗 -->
+    <div id="color-picker-modal" class="modal hidden">
+        <div class="modal-content" style="max-width:320px; text-align:center; align-items:stretch;">
+            <h3 style="color:var(--gold); font-weight:700; margin-bottom:15px;">Choose Wild Color</h3>
+            <div class="color-options">
+                <div class="color-choice red" data-color="RED"></div>
+                <div class="color-choice blue" data-color="BLUE"></div>
+                <div class="color-choice green" data-color="GREEN"></div>
+                <div class="color-choice yellow" data-color="YELLOW"></div>
+            </div>
+        </div>
+    </div>
+
+    </section>
+<script>
+window.__games={};
+window.__scope=id=>{const r=document.getElementById(id);return{getElementById:x=>r.querySelector('#'+x)||document.getElementById(x),querySelector:q=>r.querySelector(q),querySelectorAll:q=>r.querySelectorAll(q),createElement:t=>document.createElement(t),body:document.body}};
+window.syncTheme=t=>{localStorage.setItem('ct_theme',t);document.body.setAttribute('data-theme',t);document.querySelectorAll('[id=setting-theme],#pt').forEach(e=>e.value=t)};
+window.syncName=n=>{localStorage.setItem('uno_big2_username',n);Object.values(window.__games).forEach(g=>g.setName(n));const p=document.getElementById('pn');if(p&&p.value.trim()!==n)p.value=n};
+(function(){const document=window.__scope('screen-big2');
+
+        // 游戏核心状态
+        const GameState = {
+            gameActive: true,
+            currentTurn: 'player', // 'player', 'ai1', 'ai2', 'ai3'
+            difficulty: 'Normal',
+            playerName: localStorage.getItem('uno_big2_username') || 'Lu Die',
+            hands: {
+                player: [],
+                ai1: [],
+                ai2: [],
+                ai3: []
+            },
+            currentCombo: { type: null, cards: [], rank: 0 },
+            passCount: 0,
+            stats: JSON.parse(localStorage.getItem('uno_big2_stats') || '{"played":0, "won":0}')
+        };
+
+        const SUITS = ['RED', 'BLUE', 'GREEN', 'YELLOW'];
+        const VALUES = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
+
+        function initGame() {
+            let deck = [];
+            let idCounter = 1;
+            SUITS.forEach(suit => {
+                VALUES.forEach(val => {
+                    deck.push({ id: idCounter++, type: suit, val: val, rank: getCardRank(val) });
+                });
+            });
+            deck.push({ id: idCounter++, type: 'WILD', val: 'W', rank: 99, chosenColor: 'RED' });
+            deck.push({ id: idCounter++, type: 'WILD', val: 'W', rank: 99, chosenColor: 'BLUE' });
+
+            deck.sort(() => Math.random() - 0.5);
+
+            GameState.hands.player = deck.splice(0, 13);
+            GameState.hands.ai1 = deck.splice(0, 13);
+            GameState.hands.ai2 = deck.splice(0, 13);
+            GameState.hands.ai3 = deck.splice(0, 13);
+
+            sortPlayerHand();
+            
+            // 初始化时确保桌面清空干净，由玩家先手（或者拥有方块3者，此处设玩家为默认首局lead）
+            GameState.currentCombo = { type: null, cards: [], rank: 0 };
+            GameState.currentTurn = 'player';
+            GameState.passCount = 0;
+            GameState.gameActive = true;
+
+            updateUI();
+            checkTurnIndicator();
+        }
+
+        function getCardRank(val) {
+            const map = {'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'10':8,'J':9,'Q':10,'K':11,'A':12,'2':13};
+            return map[val] || 0;
+        }
+
+        function sortPlayerHand() {
+            GameState.hands.player.sort((a, b) => {
+                if (a.rank !== b.rank) return a.rank - b.rank;
+                return a.type.localeCompare(b.type);
+            });
+        }
+
+        function analyzeCards(cards) {
+            if (!cards || cards.length === 0) return { type: 'invalid', rank: 0 };
+            const len = cards.length;
+            
+            if (len === 1) {
+                return { type: 'single', cards: cards, rank: cards[0].rank };
+            }
+            if (len === 2 && cards[0].val === cards[1].val) {
+                return { type: 'pair', cards: cards, rank: cards[0].rank };
+            }
+            if (len === 3 && cards[0].val === cards[1].val && cards[1].val === cards[2].val) {
+                return { type: 'triple', cards: cards, rank: cards[0].rank };
+            }
+            if (len === 4 && cards[0].val === cards[1].val && cards[1].val === cards[2].val && cards[2].val === cards[3].val) {
+                return { type: 'bomb', cards: cards, rank: cards[0].rank };
+            }
+            if (len === 5) {
+                let sorted = [...cards].sort((a,b) => a.rank - b.rank);
+                let isStraight = true;
+                for (let i = 0; i < 4; i++) {
+                    if (sorted[i+1].rank !== sorted[i].rank + 1) {
+                        isStraight = false;
+                        break;
+                    }
+                }
+                if (isStraight) return { type: 'straight', cards: sorted, rank: sorted[4].rank };
+            }
+
+            return { type: 'invalid', rank: 0 };
+        }
+
+        function isValidPlay(newCombo, tableCombo) {
+            if (newCombo.type === 'invalid') return false;
+            if (!tableCombo || !tableCombo.type) return true;
+
+            if (newCombo.type === 'bomb' && tableCombo.type !== 'bomb') return true;
+            if (tableCombo.type === 'bomb' && newCombo.type !== 'bomb') return false;
+
+            if (newCombo.type === tableCombo.type && newCombo.cards.length === tableCombo.cards.length) {
+                return newCombo.rank > tableCombo.rank;
+            }
+            return false;
+        }
+
+        function getPlayInvalidReason(newCombo, tableCombo) {
+            if (newCombo.type === 'invalid') {
+                return 'Invalid combination! Choose 1 single, pair, triple, 5-card straight, or 4-card bomb.';
+            }
+            if (!tableCombo || !tableCombo.type) return null;
+            if (newCombo.type === 'bomb' && tableCombo.type !== 'bomb') return null;
+            if (tableCombo.type === 'bomb' && newCombo.type !== 'bomb') {
+                return 'Table has a Bomb! You can only play a higher Bomb.';
+            }
+            if (newCombo.type !== tableCombo.type) {
+                return `Combination mismatch! Table has [${tableCombo.type.toUpperCase()}], but you selected [${newCombo.type.toUpperCase()}].`;
+            }
+            if (newCombo.cards.length !== tableCombo.cards.length) {
+                return 'Card count must match the table combination!';
+            }
+            if (newCombo.rank <= tableCombo.rank) {
+                return 'Card rank is too low! Must beat current table cards.';
+            }
+            return null;
+        }
+
+        function showFloatingWarning(message) {
+            let existing = document.getElementById('floating-warning-popup');
+            if (existing) existing.remove();
+
+            const popup = document.createElement('div');
+            popup.id = 'floating-warning-popup';
+            popup.style.cssText = `
+                position: fixed;
+                right: 30px;
+                bottom: 120px;
+                background: #f7f0e1; color:#17120f; border-left:4px solid #d6372f;
+                padding: 14px 22px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 800;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+                
+                z-index: 2000;
+                animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                max-width: 300px;
+            `;
+            popup.innerHTML = `<strong>Cannot play</strong><br>${message}`;
+            document.body.appendChild(popup);
+
+            setTimeout(() => {
+                if (popup.parentElement) {
+                    popup.style.opacity = '0';
+                    setTimeout(() => popup.remove(), 300);
+                }
+            }, 3000);
+        }
+
+        function showComboBanner(text) {
+            const banner = document.getElementById('combo-popup-banner');
+            banner.textContent = text;
+            banner.classList.add('show');
+            setTimeout(() => banner.classList.remove('show'), 1800);
+        }
+
+        function showPassBanner(playerKey) {
+            let badgeId = null;
+            if (playerKey === 'ai1') badgeId = 'ai1-pass-badge';
+            else if (playerKey === 'ai2') badgeId = 'ai2-pass-badge';
+            else if (playerKey === 'ai3') badgeId = 'ai3-pass-badge';
+
+            if (badgeId) {
+                const badge = document.getElementById(badgeId);
+                if (badge) {
+                    badge.classList.remove('hidden');
+                    badge.style.animation = 'none';
+                    badge.offsetHeight;
+                    badge.style.animation = 'popPass 1.2s ease-in-out forwards';
+                    setTimeout(() => badge.classList.add('hidden'), 1200);
+                }
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('player-count').textContent = GameState.hands.player.length;
+            document.getElementById('ai1-count').textContent = GameState.hands.ai1.length;
+            document.getElementById('ai2-count').textContent = GameState.hands.ai2.length;
+            document.getElementById('ai3-count').textContent = GameState.hands.ai3.length;
+            
+            const nameDisplay = document.getElementById('player-name-display');
+            if (nameDisplay) {
+                nameDisplay.innerHTML = `${GameState.playerName} (<span id="player-count">${GameState.hands.player.length}</span>)`;
+            }
+
+            const container = document.getElementById('player-hand-container');
+            container.innerHTML = '';
+            const total = GameState.hands.player.length;
+            GameState.hands.player.forEach((card, idx) => {
+                const cardEl = document.createElement('div');
+                let cardColor = card.type === 'WILD' ? 'WILD' : card.type;
+                if (card.type === 'WILD' && card.chosenColor) cardColor = card.chosenColor;
+                
+                cardEl.className = `card ${cardColor} ${card.selected ? 'selected' : ''}`;
+                
+                const offset = idx - (total - 1) / 2;
+                const rot = offset * 3.5;
+                const translateY = Math.abs(offset) * 2;
+                cardEl.style.setProperty('--tx', `${offset * 28}px`);
+                cardEl.style.setProperty('--ty', `${translateY}px`);
+                cardEl.style.setProperty('--rot', `${rot}deg`);
+                cardEl.style.zIndex = idx;
+
+                cardEl.innerHTML = `
+                    <div class="card-top-left">${card.val}</div>
+                    <div class="card-center-badge">${card.val}</div>
+                    <div class="card-bottom-right">${card.val}</div>
+                `;
+
+                cardEl.addEventListener('click', () => {
+                    if (GameState.currentTurn !== 'player') return;
+                    card.selected = !card.selected;
+                    updateUI();
+                });
+
+                container.appendChild(cardEl);
+            });
+
+            const discardPile = document.getElementById('discard-pile');
+            if (GameState.currentCombo.cards && GameState.currentCombo.cards.length > 0) {
+                const topCard = GameState.currentCombo.cards[GameState.currentCombo.cards.length - 1];
+                let pileColor = topCard.type === 'WILD' ? (topCard.chosenColor || 'RED') : topCard.type;
+                discardPile.innerHTML = `
+                    <div class="card ${pileColor}" style="position:relative; width:100%; height:100%; box-shadow:none;">
+                        <div class="card-top-left">${topCard.val}</div>
+                        <div class="card-center-badge">${topCard.val}</div>
+                        <div class="card-bottom-right">${topCard.val}</div>
+                    </div>
+                `;
+            } else {
+                discardPile.innerHTML = `<div style="font-size:12px; font-weight:900; color:rgba(255,255,255,0.6);">TABLE</div>`;
+            }
+        }
+
+        function checkTurnIndicator() {
+            ['player', 'ai1', 'ai2', 'ai3'].forEach(k => {
+                let av = document.getElementById(k === 'player' ? 'player-avatar' : `${k}-avatar`);
+                if (av) {
+                    if (k === GameState.currentTurn) av.classList.add('active-glow');
+                    else av.classList.remove('active-glow');
+                }
+            });
+
+            if (GameState.currentTurn !== 'player' && GameState.gameActive) {
+                setTimeout(aiExecuteTurn, 1000);
+            }
+        }
+
+        function advanceTurn() {
+            const order = ['player', 'ai1', 'ai2', 'ai3'];
+            let idx = order.indexOf(GameState.currentTurn);
+            idx = (idx + 1) % order.length;
+            GameState.currentTurn = order[idx];
+
+            // 只有当所有3个对手连续Pass（passCount >= 3）时才清空桌面牌堆给当前领先者
+            if (GameState.passCount >= 3) {
+                GameState.currentCombo = { type: null, cards: [], rank: 0 };
+                GameState.passCount = 0;
+                showComboBanner('TABLE CLEARED: NEW LEAD');
+            }
+
+            checkTurnIndicator();
+            updateUI();
+        }
+
+        function executePlayerPlay(selectedCards, combo) {
+            selectedCards.forEach(c => {
+                const idx = GameState.hands.player.findIndex(card => card.id === c.id);
+                if (idx !== -1) GameState.hands.player.splice(idx, 1);
+            });
+
+            GameState.currentCombo = combo;
+            GameState.passCount = 0;
+            showComboBanner(`YOU PLAYED [${combo.type.toUpperCase()}]`);
+
+            if (GameState.hands.player.length === 0) {
+                triggerWin(true);
+                return;
+            }
+
+            advanceTurn();
+        }
+
+        function aiExecuteTurn() {
+            if (!GameState.gameActive) return;
+            const aiKey = GameState.currentTurn;
+            const hand = GameState.hands[aiKey];
+
+            let playedCards = null;
+            let chosenCombo = null;
+
+            // 随机出牌：先随机选一种张数，再在该张数的合法牌型中随机挑一个
+            const bySize = {};
+            const walk = (k, start, cur) => {
+                if (cur.length === k) {
+                    const c = analyzeCards(cur);
+                    if (isValidPlay(c, GameState.currentCombo)) (bySize[k] = bySize[k] || []).push({ cards: [...cur], combo: c });
+                    return;
+                }
+                for (let n = start; n < hand.length; n++) { cur.push(hand[n]); walk(k, n + 1, cur); cur.pop(); }
+            };
+            [1, 2, 3, 4, 5].forEach(k => walk(k, 0, []));
+            const sizes = Object.keys(bySize);
+            const diff = GameState.difficulty;
+            const leading = !GameState.currentCombo || !GameState.currentCombo.type;
+            const all = [].concat(...Object.values(bySize));
+            let pick = null;
+            if (all.length) {
+                if (diff === 'Hard') {
+                    // 困难：能一次出完就出完；否则不轻易用炸弹，领出时多张优先，跟牌时出刚好压过的最小牌型
+                    const danger = Object.keys(GameState.hands).some(k => k !== aiKey && GameState.hands[k].length <= 3);
+                    const nonBomb = all.filter(x => x.combo.type !== 'bomb');
+                    const pool = (nonBomb.length && !danger) ? nonBomb : all;
+                    pick = all.find(x => x.cards.length === hand.length) ||
+                        pool.slice().sort((a, c) => leading ? (c.cards.length - a.cards.length || a.combo.rank - c.combo.rank) : (a.combo.rank - c.combo.rank))[0];
+                } else if (diff === 'Easy' && !leading && Math.random() < 0.25) {
+                    pick = null; // 休闲：有时有牌也不出
+                } else {
+                    const list = bySize[sizes[Math.floor(Math.random() * sizes.length)]];
+                    pick = list[Math.floor(Math.random() * list.length)];
+                }
+            }
+            if (pick) { playedCards = pick.cards; chosenCombo = pick.combo; }
+
+            if (playedCards && chosenCombo) {
+                playedCards.forEach(c => {
+                    const idx = hand.findIndex(card => card.id === c.id);
+                    if (idx !== -1) hand.splice(idx, 1);
+                });
+                GameState.currentCombo = chosenCombo;
+                GameState.passCount = 0;
+                showComboBanner(`${aiKey.toUpperCase()} PLAYED [${chosenCombo.type.toUpperCase()}]`);
+
+                if (hand.length === 0) {
+                    triggerWin(false);
+                    return;
+                }
+                advanceTurn();
+            } else {
+                GameState.passCount++;
+                showPassBanner(aiKey);
+                showComboBanner(`${aiKey.toUpperCase()} PASSED`);
+                advanceTurn();
+            }
+        }
+
+        function triggerWin(isPlayerWin) {
+            GameState.gameActive = false;
+            GameState.stats.played++;
+            if (isPlayerWin) GameState.stats.won++;
+            localStorage.setItem('uno_big2_stats', JSON.stringify(GameState.stats));
+            showComboBanner(isPlayerWin ? ' YOU WIN ' : ' AI WINS ');
+            setTimeout(initGame, 3000);
+        }
+
+        document.getElementById('play-btn').addEventListener('click', () => {
+            if (GameState.currentTurn !== 'player') return;
+            const selectedCards = GameState.hands.player.filter(c => c.selected);
+            const combo = analyzeCards(selectedCards);
+
+            const invalidReason = getPlayInvalidReason(combo, GameState.currentCombo);
+            if (invalidReason) {
+                showFloatingWarning(invalidReason);
+                return;
+            }
+
+            if (selectedCards.length === 1 && selectedCards[0].type === 'WILD') {
+                document.getElementById('color-picker-modal').classList.remove('hidden');
+                window.pendingWildPlay = { selectedCards, combo };
+                return;
+            }
+
+            executePlayerPlay(selectedCards, combo);
+        });
+
+        document.getElementById('draw-btn').addEventListener('click', () => {
+            if (GameState.currentTurn !== 'player') return;
+            SUITS.forEach(s => {
+                VALUES.forEach(v => {
+                    if (Math.random() < 0.05 && GameState.hands.player.length < 20) {
+                        GameState.hands.player.push({ id: Math.random(), type: s, val: v, rank: getCardRank(v) });
+                    }
+                });
+            });
+            sortPlayerHand();
+            updateUI();
+            showComboBanner('PICKED UP CARDS');
+        });
+
+        document.getElementById('pass-btn').addEventListener('click', () => {
+            if (GameState.currentTurn !== 'player' || !GameState.currentCombo.type) return;
+            GameState.passCount++;
+            showPassBanner('player');
+            showComboBanner('YOU PASSED');
+            advanceTurn();
+        });
+
+        document.getElementById('sort-btn').addEventListener('click', () => {
+            sortPlayerHand();
+            updateUI();
+        });
+
+        document.getElementById('open-settings-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.remove('hidden');
+            document.getElementById('setting-username').value = GameState.playerName;
+            document.getElementById('stat-played').textContent = GameState.stats.played;
+            document.getElementById('stat-won').textContent = GameState.stats.won;
+            let rate = GameState.stats.played > 0 ? Math.round((GameState.stats.won / GameState.stats.played) * 100) : 0;
+            document.getElementById('stat-rate').textContent = rate + '%';
+        });
+
+        document.getElementById('setting-username').addEventListener('input', (e) => {
+            let val = e.target.value.trim();
+            if (val) {
+                GameState.playerName = val;
+                window.syncName(val);
+                updateUI();
+            }
+        });
+
+        document.getElementById('player-name-display').addEventListener('click', () => {
+            let newName = prompt('Enter your new username:', GameState.playerName);
+            if (newName && newName.trim()) {
+                GameState.playerName = newName.trim();
+                window.syncName(GameState.playerName);
+                updateUI();
+            }
+        });
+
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('hidden');
+        });
+
+        document.getElementById('setting-difficulty').addEventListener('change', (e) => {
+            GameState.difficulty = e.target.value;
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.tab).classList.add('active');
+            });
+        });
+
+        document.getElementById('setting-theme').addEventListener('change', (e) => {
+            document.body.setAttribute('data-theme', e.target.value);window.syncTheme(e.target.value);
+        });
+
+        document.getElementById('restart-game-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('hidden');
+            initGame();
+        });
+
+        document.querySelectorAll('.color-choice').forEach(choice => {
+            choice.addEventListener('click', (e) => {
+                const color = e.target.dataset.color;
+                document.getElementById('color-picker-modal').classList.add('hidden');
+                if (window.pendingWildPlay) {
+                    window.pendingWildPlay.selectedCards[0].chosenColor = color;
+                    executePlayerPlay(window.pendingWildPlay.selectedCards, window.pendingWildPlay.combo);
+                    window.pendingWildPlay = null;
+                }
+            });
+        });
+
+        let seconds = 0;
+        setInterval(() => {
+            seconds++;
+            let m = String(Math.floor(seconds / 60)).padStart(2, '0');
+            let s = String(seconds % 60).padStart(2, '0');
+            const timerEl = document.getElementById('game-timer');
+            if (timerEl) timerEl.textContent = `${m}:${s}`;
+        }, 1000);
+
+        window.__games['big2']={init:initGame,setName:n=>{GameState.playerName=n;updateUI()}};
+    
+})();
+(function(){const document=window.__scope('screen-uno');
+
+
+const ORDER=['player','ai1','ai2','ai3'],LABEL={S:'⊘',R:'⇄','+2':'+2',W:'★','+4':'+4'},NAMES={player:'You',ai1:'Elliana',ai2:'Ezra',ai3:'Garrett'};
+const shuffle=a=>a.sort(()=>Math.random()-.5);
+const cardHTML=c=>{const v=c.j?'☺':(LABEL[c.val]||c.val);return `<div class="card-top-left">${v}</div><div class="card-center-badge">${v}</div><div class="card-bottom-right">${v}</div>`};
+function renderCommon(onCard,dim){
+ const H=GameState.hands;ORDER.forEach(k=>{const e=document.getElementById(k+'-count');if(e&&k!=='player')e.textContent=H[k].length});
+ document.getElementById('player-name-display').innerHTML=`${GameState.playerName} (<span id="player-count">${H.player.length}</span>)`;
+ const box=document.getElementById('player-hand-container');box.innerHTML='';const n=H.player.length,gap=Math.min(28,640/Math.max(n,1));
+ H.player.forEach((c,i)=>{const e=document.createElement('div');e.className=`card ${c.type} ${c.selected?'selected':''} ${dim&&dim(c)?'dim':''}`;const o=i-(n-1)/2;
+  e.style.setProperty('--tx',o*gap+'px');e.style.setProperty('--ty',Math.abs(o)*2+'px');e.style.setProperty('--rot',o*Math.min(3.5,40/n)+'deg');e.style.zIndex=i;e.innerHTML=cardHTML(c);
+  e.onclick=()=>{if(GameState.currentTurn==='player')onCard(c)};box.appendChild(e)});}
+function baseState(key){return{gameActive:true,currentTurn:'player',difficulty:'Normal',playerName:localStorage.getItem('uno_big2_username')||'Lu Die',hands:{player:[],ai1:[],ai2:[],ai3:[]},stats:JSON.parse(localStorage.getItem(key)||'{"played":0,"won":0}')}}
+function finish(win,key,msg){GameState.gameActive=false;GameState.stats.played++;if(win)GameState.stats.won++;localStorage.setItem(key,JSON.stringify(GameState.stats));showComboBanner(msg);setTimeout(initGame,3000)}
+
+const GameState=Object.assign(baseState('uno_stats'),{deck:[],disc:[],top:null,color:null,dir:1,drew:false});
+const COLORS=['RED','BLUE','GREEN','YELLOW'];
+const nextKey=(k,s=1)=>ORDER[(ORDER.indexOf(k)+GameState.dir*s+400)%4];
+const canPlay=c=>c.type==='WILD'||c.type===GameState.color||c.val===GameState.top.val;
+function initGame(){let d=[],id=1;COLORS.forEach(c=>{d.push({id:id++,type:c,val:'0'});for(let n=1;n<=9;n++)d.push({id:id++,type:c,val:''+n},{id:id++,type:c,val:''+n});['S','R','+2'].forEach(v=>d.push({id:id++,type:c,val:v},{id:id++,type:c,val:v}))});
+ for(let i=0;i<4;i++)d.push({id:id++,type:'WILD',val:'W'},{id:id++,type:'WILD',val:'+4'});
+ shuffle(d);GameState.deck=d;ORDER.forEach(k=>{GameState.hands[k]=[];drawCards(k,7)});
+ const s=d.findIndex(c=>c.type!=='WILD'&&/^\d$/.test(c.val));const c=d.splice(s,1)[0];GameState.top=c;GameState.color=c.type;GameState.disc=[c];
+ Object.assign(GameState,{dir:1,drew:false,currentTurn:'player',gameActive:true});sortHand();updateUI();checkTurnIndicator()}
+function drawCards(k,n){for(let i=0;i<n;i++){if(!GameState.deck.length){const t=GameState.disc.pop();GameState.deck=shuffle(GameState.disc);GameState.disc=[t]}if(GameState.deck.length)GameState.hands[k].push(GameState.deck.pop())}}
+function sortHand(){GameState.hands.player.sort((a,b)=>COLORS.indexOf(a.type)-COLORS.indexOf(b.type)||a.val.localeCompare(b.val))}
+function updateUI(){renderCommon(c=>{const wasSel=c.selected;GameState.hands.player.forEach(x=>x.selected=false);if(wasSel)playerPlay();else c.selected=true;updateUI()},c=>GameState.currentTurn==='player'&&!canPlay(c));
+ const t=GameState.top,p=document.getElementById('discard-pile');p.innerHTML=t?`<div class="card ${GameState.color}" style="position:relative;width:100%;height:100%;transform:none;box-shadow:none">${cardHTML(t)}</div>`:''}
+function endTurn(steps=1){GameState.currentTurn=nextKey(GameState.currentTurn,steps);GameState.drew=false;checkTurnIndicator();updateUI()}
+function play(k,c,col){const h=GameState.hands[k];h.splice(h.findIndex(x=>x.id===c.id),1);c.selected=false;GameState.disc.push(c);GameState.top=c;GameState.color=c.type==='WILD'?col:c.type;
+ showComboBanner(`${NAMES[k]} played ${LABEL[c.val]||c.val}${c.type==='WILD'?' · '+GameState.color:''}`);
+ if(!h.length){updateUI();return finish(k==='player',  'uno_stats',k==='player'?'YOU WIN':'AI WINS')}
+ let s=1;if(c.val==='R')GameState.dir*=-1;if(c.val==='S')s=2;if(c.val==='+2'){drawCards(nextKey(k),2);s=2}if(c.val==='+4'){drawCards(nextKey(k),4);s=2}
+ GameState.currentTurn=k;endTurn(s)}
+function executePlayerPlay(cards){play('player',cards[0],cards[0].chosenColor)}
+function playerPlay(){const c=GameState.hands.player.find(x=>x.selected);if(!c)return showFloatingWarning('Select a card first.');
+ if(!canPlay(c))return showFloatingWarning(`Must match ${GameState.color} or ${LABEL[GameState.top.val]||GameState.top.val}.`);
+ if(c.type==='WILD'){window.pendingWildPlay={selectedCards:[c],combo:null};document.getElementById('color-picker-modal').classList.remove('hidden');return}play('player',c)}
+function aiExecuteTurn(){if(!GameState.gameActive)return;const k=GameState.currentTurn,h=GameState.hands[k];
+ const D=GameState.difficulty;
+ const pick=()=>{const pl=h.filter(canPlay);if(!pl.length||(D==='Easy'&&Math.random()<.25))return;if(D!=='Hard')return pl[Math.random()*pl.length|0];
+  if(GameState.hands[nextKey(k)].length<=2){const a=pl.find(c=>c.val==='+4')||pl.find(c=>c.val==='+2')||pl.find(c=>c.val==='S')||pl.find(c=>c.val==='R');if(a)return a}
+  const nw=pl.filter(c=>c.type!=='WILD');if(nw.length)return nw.sort((a,b)=>h.filter(x=>x.type===b.type).length-h.filter(x=>x.type===a.type).length)[0];
+  return pl.find(c=>c.val==='W')||pl[0]};
+ const col=()=>{if(D!=='Hard')return COLORS[Math.random()*4|0];const m={};h.forEach(c=>c.type!=='WILD'&&(m[c.type]=(m[c.type]||0)+1));return Object.keys(m).sort((a,b)=>m[b]-m[a])[0]||'RED'};
+ let c=pick();if(!c){drawCards(k,1);const n=h[h.length-1];if(n&&canPlay(n))c=n;else{showPassBanner(k);showComboBanner(`${NAMES[k]} drew a card`);return endTurn()}}
+ play(k,c,col())}
+document.getElementById('play-btn').onclick=()=>{if(GameState.currentTurn==='player')playerPlay()};
+const drawAction=()=>{if(GameState.currentTurn!=='player'||GameState.drew)return;drawCards('player',1);sortHand();GameState.drew=true;const n=GameState.hands.player.slice(-1)[0];
+ if(!GameState.hands.player.some(canPlay)){showComboBanner('No match · turn passes');return endTurn()}showComboBanner('Play a card or pass');updateUI()};
+document.getElementById('draw-btn').onclick=drawAction;document.getElementById('draw-pile').onclick=drawAction;
+document.getElementById('pass-btn').onclick=()=>{if(GameState.currentTurn==='player'&&GameState.drew){showComboBanner('You passed');endTurn()}else showFloatingWarning('Draw a card first, then pass if you cannot play.')};
+document.getElementById('sort-btn').onclick=()=>{sortHand();updateUI()};
+function showFloatingWarning(message) {
+            let existing = document.getElementById('floating-warning-popup');
+            if (existing) existing.remove();
+
+            const popup = document.createElement('div');
+            popup.id = 'floating-warning-popup';
+            popup.style.cssText = `
+                position: fixed;
+                right: 30px;
+                bottom: 120px;
+                background: #f7f0e1; color:#17120f; border-left:4px solid #d6372f;
+                padding: 14px 22px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 800;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+                
+                z-index: 2000;
+                animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                max-width: 300px;
+            `;
+            popup.innerHTML = `<strong>Cannot play</strong><br>${message}`;
+            document.body.appendChild(popup);
+
+            setTimeout(() => {
+                if (popup.parentElement) {
+                    popup.style.opacity = '0';
+                    setTimeout(() => popup.remove(), 300);
+                }
+            }, 3000);
+        }
+
+        function showComboBanner(text) {
+            const banner = document.getElementById('combo-popup-banner');
+            banner.textContent = text;
+            banner.classList.add('show');
+            setTimeout(() => banner.classList.remove('show'), 1800);
+        }
+
+        function showPassBanner(playerKey) {
+            let badgeId = null;
+            if (playerKey === 'ai1') badgeId = 'ai1-pass-badge';
+            else if (playerKey === 'ai2') badgeId = 'ai2-pass-badge';
+            else if (playerKey === 'ai3') badgeId = 'ai3-pass-badge';
+
+            if (badgeId) {
+                const badge = document.getElementById(badgeId);
+                if (badge) {
+                    badge.classList.remove('hidden');
+                    badge.style.animation = 'none';
+                    badge.offsetHeight;
+                    badge.style.animation = 'popPass 1.2s ease-in-out forwards';
+                    setTimeout(() => badge.classList.add('hidden'), 1200);
+                }
+            }
+        }
+
+        function checkTurnIndicator() {
+            ['player', 'ai1', 'ai2', 'ai3'].forEach(k => {
+                let av = document.getElementById(k === 'player' ? 'player-avatar' : `${k}-avatar`);
+                if (av) {
+                    if (k === GameState.currentTurn) av.classList.add('active-glow');
+                    else av.classList.remove('active-glow');
+                }
+            });
+
+            if (GameState.currentTurn !== 'player' && GameState.gameActive) {
+                setTimeout(aiExecuteTurn, 1000);
+            }
+        }
+
+        document.getElementById('open-settings-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.remove('hidden');
+            document.getElementById('setting-username').value = GameState.playerName;
+            document.getElementById('stat-played').textContent = GameState.stats.played;
+            document.getElementById('stat-won').textContent = GameState.stats.won;
+            let rate = GameState.stats.played > 0 ? Math.round((GameState.stats.won / GameState.stats.played) * 100) : 0;
+            document.getElementById('stat-rate').textContent = rate + '%';
+        });
+
+        document.getElementById('setting-username').addEventListener('input', (e) => {
+            let val = e.target.value.trim();
+            if (val) {
+                GameState.playerName = val;
+                window.syncName(val);
+                updateUI();
+            }
+        });
+
+        document.getElementById('player-name-display').addEventListener('click', () => {
+            let newName = prompt('Enter your new username:', GameState.playerName);
+            if (newName && newName.trim()) {
+                GameState.playerName = newName.trim();
+                window.syncName(GameState.playerName);
+                updateUI();
+            }
+        });
+
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('hidden');
+        });
+
+        document.getElementById('setting-difficulty').addEventListener('change', (e) => {
+            GameState.difficulty = e.target.value;
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.tab).classList.add('active');
+            });
+        });
+
+        document.getElementById('setting-theme').addEventListener('change', (e) => {
+            document.body.setAttribute('data-theme', e.target.value);window.syncTheme(e.target.value);
+        });
+
+        document.getElementById('restart-game-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('hidden');
+            initGame();
+        });
+
+        document.querySelectorAll('.color-choice').forEach(choice => {
+            choice.addEventListener('click', (e) => {
+                const color = e.target.dataset.color;
+                document.getElementById('color-picker-modal').classList.add('hidden');
+                if (window.pendingWildPlay) {
+                    window.pendingWildPlay.selectedCards[0].chosenColor = color;
+                    executePlayerPlay(window.pendingWildPlay.selectedCards, window.pendingWildPlay.combo);
+                    window.pendingWildPlay = null;
+                }
+            });
+        });
+
+        let seconds = 0;
+        setInterval(() => {
+            seconds++;
+            let m = String(Math.floor(seconds / 60)).padStart(2, '0');
+            let s = String(seconds % 60).padStart(2, '0');
+            const timerEl = document.getElementById('game-timer');
+            if (timerEl) timerEl.textContent = `${m}:${s}`;
+        }, 1000);
+
+        window.__games['uno']={init:initGame,setName:n=>{GameState.playerName=n;updateUI()}};
+    
+})();
+(function(){const document=window.__scope('screen-rummikub');
+
+
+const ORDER=['player','ai1','ai2','ai3'],LABEL={S:'⊘',R:'⇄','+2':'+2',W:'★','+4':'+4'},NAMES={player:'You',ai1:'Elliana',ai2:'Ezra',ai3:'Garrett'};
+const shuffle=a=>a.sort(()=>Math.random()-.5);
+const cardHTML=c=>{const v=c.j?'☺':(LABEL[c.val]||c.val);return `<div class="card-top-left">${v}</div><div class="card-center-badge">${v}</div><div class="card-bottom-right">${v}</div>`};
+function renderCommon(onCard,dim){
+ const H=GameState.hands;ORDER.forEach(k=>{const e=document.getElementById(k+'-count');if(e&&k!=='player')e.textContent=H[k].length});
+ document.getElementById('player-name-display').innerHTML=`${GameState.playerName} (<span id="player-count">${H.player.length}</span>)`;
+ const box=document.getElementById('player-hand-container');box.innerHTML='';const n=H.player.length,gap=Math.min(28,640/Math.max(n,1));
+ H.player.forEach((c,i)=>{const e=document.createElement('div');e.className=`card ${c.type} ${c.selected?'selected':''} ${dim&&dim(c)?'dim':''}`;const o=i-(n-1)/2;
+  e.style.setProperty('--tx',o*gap+'px');e.style.setProperty('--ty',Math.abs(o)*2+'px');e.style.setProperty('--rot',o*Math.min(3.5,40/n)+'deg');e.style.zIndex=i;e.innerHTML=cardHTML(c);
+  e.onclick=()=>{if(GameState.currentTurn==='player')onCard(c)};box.appendChild(e)});}
+function baseState(key){return{gameActive:true,currentTurn:'player',difficulty:'Normal',playerName:localStorage.getItem('uno_big2_username')||'Lu Die',hands:{player:[],ai1:[],ai2:[],ai3:[]},stats:JSON.parse(localStorage.getItem(key)||'{"played":0,"won":0}')}}
+function finish(win,key,msg){GameState.gameActive=false;GameState.stats.played++;if(win)GameState.stats.won++;localStorage.setItem(key,JSON.stringify(GameState.stats));showComboBanner(msg);setTimeout(initGame,3000)}
+
+const GameState=Object.assign(baseState('rummikub_stats'),{pool:[],board:[],melded:{},stall:0});
+const COLORS=['RED','BLUE','GREEN','YELLOW'];
+function score(t){if(t.length<3)return 0;const n=t.filter(x=>!x.j);if(!n.length)return 0;const nums=n.map(x=>x.val),cols=n.map(x=>x.type);
+ if(new Set(nums).size===1&&t.length<=4&&new Set(cols).size===n.length)return nums[0]*t.length;
+ if(new Set(cols).size===1&&new Set(nums).size===n.length&&t.length<=13){const lo=Math.min(...nums),hi=Math.max(...nums);for(let s=Math.max(1,hi-t.length+1);s<=lo&&s+t.length-1<=13;s++)return t.length*(2*s+t.length-1)/2}return 0}
+function findSets(h){const out=[];h=h.filter(x=>!x.j);
+ for(let n=1;n<=13;n++){const g=[],seen=new Set();h.filter(x=>x.val===n).forEach(x=>{if(!seen.has(x.type)){seen.add(x.type);g.push(x)}});if(g.length>=3)out.push(g)}
+ COLORS.forEach(c=>{const m={};h.filter(x=>x.type===c).forEach(x=>m[x.val]=m[x.val]||x);let r=[];for(let n=1;n<=14;n++){if(m[n])r.push(m[n]);else{if(r.length>=3)out.push(r);r=[]}}});
+ return out.sort((a,b)=>score(b)-score(a))}
+function initGame(){let id=1,p=[];for(let r=0;r<2;r++)COLORS.forEach(c=>{for(let n=1;n<=13;n++)p.push({id:id++,type:c,val:n})});p.push({id:id++,type:'WILD',val:0,j:true},{id:id++,type:'WILD',val:0,j:true});
+ GameState.pool=shuffle(p);ORDER.forEach(k=>{GameState.hands[k]=GameState.pool.splice(0,14);GameState.melded[k]=false});
+ Object.assign(GameState,{board:[],stall:0,currentTurn:'player',gameActive:true});sortHand();updateUI();checkTurnIndicator()}
+function sortHand(){GameState.hands.player.sort((a,b)=>COLORS.indexOf(a.type)-COLORS.indexOf(b.type)||a.val-b.val)}
+function renderRack(){const box=document.getElementById('player-hand-container');box.innerHTML='';GameState.hands.player.forEach(c=>{const e=document.createElement('div');e.className='rt '+c.type+(c.selected?' selected':'');e.innerHTML='<span>'+(c.j?'☺':c.val)+'</span><i></i>';e.onclick=()=>{if(GameState.currentTurn==='player'){c.selected=!c.selected;updateUI()}};box.appendChild(e)})}
+function updateUI(){renderCommon(()=>{});renderRack();
+ document.getElementById('board').innerHTML=`<div class="pool">Pool: ${GameState.pool.length} tiles · Sets on table: ${GameState.board.length}</div>`+GameState.board.map(s=>`<div class="set">${s.map(t=>`<div class="t ${t.type}">${t.j?'☺':t.val}</div>`).join('')}</div>`).join('')}
+function take(k,tiles){const h=GameState.hands[k];tiles.forEach(t=>{t.selected=false;h.splice(h.findIndex(x=>x.id===t.id),1)})}
+function lay(k,tiles){const pts=score(tiles);
+ if(pts){if(!GameState.melded[k]&&pts<30)return `First set must total 30+ points (this one is ${pts}).`;take(k,tiles);GameState.board.push(tiles);GameState.melded[k]=true;return ''}
+ if(GameState.melded[k]){const s=GameState.board.find(s=>score([...s,...tiles]));if(s){take(k,tiles);s.push(...tiles);return ''}}
+ return 'Not a valid set. Use 3+ tiles: same number in different colors, or a run in one color. ☺ is a joker.'}
+function after(k,msg){GameState.stall=0;showComboBanner(`${NAMES[k]} ${msg}`);if(!GameState.hands[k].length){updateUI();return finish(k==='player','rummikub_stats',k==='player'?'YOU WIN':'AI WINS')}next()}
+function next(){GameState.currentTurn=ORDER[(ORDER.indexOf(GameState.currentTurn)+1)%4];checkTurnIndicator();updateUI()}
+function drawTile(k){if(GameState.pool.length){GameState.hands[k].push(GameState.pool.pop());GameState.stall=0}else if(++GameState.stall>=4){const m=ORDER.reduce((a,b)=>GameState.hands[b].length<GameState.hands[a].length?b:a);return finish(m==='player','rummikub_stats','POOL EMPTY · '+NAMES[m]+' has fewest tiles')}
+ showComboBanner(`${NAMES[k]} drew a tile`);if(k!=='player')showPassBanner(k);next()}
+function aiExecuteTurn(){if(!GameState.gameActive)return;const k=GameState.currentTurn,h=GameState.hands[k],opts=[];
+ findSets(h).forEach(x=>{if(GameState.melded[k]||score(x)>=30)opts.push({set:x})});
+ if(GameState.melded[k])h.forEach(t=>GameState.board.forEach(b=>{if(score([...b,t]))opts.push({t,b})}));
+ const D=GameState.difficulty;if(!opts.length||(D==='Easy'&&Math.random()<.3))return drawTile(k);
+ const o=D==='Hard'?opts.sort((a,b)=>(b.set?1000+score(b.set):b.t.val)-(a.set?1000+score(a.set):a.t.val))[0]:opts[Math.random()*opts.length|0];
+ if(o.set){take(k,o.set);GameState.board.push(o.set);GameState.melded[k]=true;return after(k,`laid a set of ${o.set.length}`)}
+ take(k,[o.t]);o.b.push(o.t);after(k,'added a tile')}
+document.getElementById('play-btn').onclick=()=>{if(GameState.currentTurn!=='player')return;const sel=GameState.hands.player.filter(c=>c.selected);
+ if(!sel.length)return showFloatingWarning('Select tiles from your rack first.');const e=lay('player',sel);if(e)return showFloatingWarning(e);after('player','laid '+sel.length+' tiles')};
+document.getElementById('draw-btn').onclick=()=>{if(GameState.currentTurn==='player')drawTile('player')};
+document.getElementById('sort-btn').onclick=()=>{sortHand();updateUI()};
+function showFloatingWarning(message) {
+            let existing = document.getElementById('floating-warning-popup');
+            if (existing) existing.remove();
+
+            const popup = document.createElement('div');
+            popup.id = 'floating-warning-popup';
+            popup.style.cssText = `
+                position: fixed;
+                right: 30px;
+                bottom: 120px;
+                background: #f7f0e1; color:#17120f; border-left:4px solid #d6372f;
+                padding: 14px 22px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 800;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+                
+                z-index: 2000;
+                animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                max-width: 300px;
+            `;
+            popup.innerHTML = `<strong>Cannot play</strong><br>${message}`;
+            document.body.appendChild(popup);
+
+            setTimeout(() => {
+                if (popup.parentElement) {
+                    popup.style.opacity = '0';
+                    setTimeout(() => popup.remove(), 300);
+                }
+            }, 3000);
+        }
+
+        function showComboBanner(text) {
+            const banner = document.getElementById('combo-popup-banner');
+            banner.textContent = text;
+            banner.classList.add('show');
+            setTimeout(() => banner.classList.remove('show'), 1800);
+        }
+
+        function showPassBanner(playerKey) {
+            let badgeId = null;
+            if (playerKey === 'ai1') badgeId = 'ai1-pass-badge';
+            else if (playerKey === 'ai2') badgeId = 'ai2-pass-badge';
+            else if (playerKey === 'ai3') badgeId = 'ai3-pass-badge';
+
+            if (badgeId) {
+                const badge = document.getElementById(badgeId);
+                if (badge) {
+                    badge.classList.remove('hidden');
+                    badge.style.animation = 'none';
+                    badge.offsetHeight;
+                    badge.style.animation = 'popPass 1.2s ease-in-out forwards';
+                    setTimeout(() => badge.classList.add('hidden'), 1200);
+                }
+            }
+        }
+
+        function checkTurnIndicator() {
+            ['player', 'ai1', 'ai2', 'ai3'].forEach(k => {
+                let av = document.getElementById(k === 'player' ? 'player-avatar' : `${k}-avatar`);
+                if (av) {
+                    if (k === GameState.currentTurn) av.classList.add('active-glow');
+                    else av.classList.remove('active-glow');
+                }
+            });
+
+            if (GameState.currentTurn !== 'player' && GameState.gameActive) {
+                setTimeout(aiExecuteTurn, 1000);
+            }
+        }
+
+        document.getElementById('open-settings-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.remove('hidden');
+            document.getElementById('setting-username').value = GameState.playerName;
+            document.getElementById('stat-played').textContent = GameState.stats.played;
+            document.getElementById('stat-won').textContent = GameState.stats.won;
+            let rate = GameState.stats.played > 0 ? Math.round((GameState.stats.won / GameState.stats.played) * 100) : 0;
+            document.getElementById('stat-rate').textContent = rate + '%';
+        });
+
+        document.getElementById('setting-username').addEventListener('input', (e) => {
+            let val = e.target.value.trim();
+            if (val) {
+                GameState.playerName = val;
+                window.syncName(val);
+                updateUI();
+            }
+        });
+
+        document.getElementById('player-name-display').addEventListener('click', () => {
+            let newName = prompt('Enter your new username:', GameState.playerName);
+            if (newName && newName.trim()) {
+                GameState.playerName = newName.trim();
+                window.syncName(GameState.playerName);
+                updateUI();
+            }
+        });
+
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('hidden');
+        });
+
+        document.getElementById('setting-difficulty').addEventListener('change', (e) => {
+            GameState.difficulty = e.target.value;
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.tab).classList.add('active');
+            });
+        });
+
+        document.getElementById('setting-theme').addEventListener('change', (e) => {
+            document.body.setAttribute('data-theme', e.target.value);window.syncTheme(e.target.value);
+        });
+
+        document.getElementById('restart-game-btn').addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('hidden');
+            initGame();
+        });
+
+        document.querySelectorAll('.color-choice').forEach(choice => {
+            choice.addEventListener('click', (e) => {
+                const color = e.target.dataset.color;
+                document.getElementById('color-picker-modal').classList.add('hidden');
+                if (window.pendingWildPlay) {
+                    window.pendingWildPlay.selectedCards[0].chosenColor = color;
+                    executePlayerPlay(window.pendingWildPlay.selectedCards, window.pendingWildPlay.combo);
+                    window.pendingWildPlay = null;
+                }
+            });
+        });
+
+        let seconds = 0;
+        setInterval(() => {
+            seconds++;
+            let m = String(Math.floor(seconds / 60)).padStart(2, '0');
+            let s = String(seconds % 60).padStart(2, '0');
+            const timerEl = document.getElementById('game-timer');
+            if (timerEl) timerEl.textContent = `${m}:${s}`;
+        }, 1000);
+
+        window.__games['rummikub']={init:initGame,setName:n=>{GameState.playerName=n;updateUI()}};
+    
+})();
+
+(function(){const S=['big2','uno','rummikub'],started={},lobby=document.getElementById('lobby');
+ function show(n){document.querySelectorAll('.modal').forEach(m=>m.classList.add('hidden'));const g=S.includes(n);lobby.hidden=g;
+  S.forEach(x=>document.getElementById('screen-'+x).hidden=x!==n);
+  if(g&&!started[n]){started[n]=1;window.__games[n].init()}
+  if(!g)document.querySelectorAll('.gcard').forEach(c=>c.querySelector('.play').textContent=started[c.dataset.g]?'Resume':'Play')}
+ document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){e.preventDefault();show(b.dataset.go)}});
+ document.getElementById('pt').onchange=e=>window.syncTheme(e.target.value);
+ document.getElementById('pn').oninput=e=>{const v=e.target.value.trim();if(v)window.syncName(v)};
+ document.getElementById('pn').value=localStorage.getItem('uno_big2_username')||'Lu Die';
+ const th=localStorage.getItem('ct_theme');if(th)window.syncTheme(th);
+ show('home');})();
+</script>
+</body>
+</html>
